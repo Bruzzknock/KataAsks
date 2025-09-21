@@ -29,5 +29,8 @@ chroma_langchain_db/
 .DS_Store
 Thumbs.db
 
-#documents
-documents/
+# Ignore everything inside documents/
+documents/*
+
+# But keep this placeholder file
+!documents/.gitkeep

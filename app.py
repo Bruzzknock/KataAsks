@@ -208,7 +208,7 @@ def render_document_panel(vector_store: Chroma) -> None:
                     "level": "info",
                     "text": "No new or updated documents detected.",
                 }
-        st.experimental_rerun()
+        st.rerun()
 
     docs = get_persisted_documents(vector_store)
     if not docs:
@@ -242,7 +242,7 @@ def render_document_panel(vector_store: Chroma) -> None:
             level = "info"
         st.session_state["doc_action_message"] = {"level": level, "text": text}
         st.session_state["doc_selection"] = None
-        st.experimental_rerun()
+        st.rerun()
 
 
 @st.cache_resource(show_spinner="Loading models and documents...")

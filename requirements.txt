@@ -76,7 +76,7 @@ opentelemetry-semantic-conventions==0.58b0
 orjson==3.11.3
 ormsgpack==1.10.0
 overrides==7.7.0
-packaging==25.0
+packaging==24.2
 pandas==2.3.2
 posthog==5.4.0
 propcache==0.3.2
@@ -129,4 +129,6 @@ xxhash==3.5.0
 yarl==1.20.1
 zipp==3.23.0
 zstandard==0.25.0
-streamlit==1.41.1
+streamlit==1.49.1
+
+

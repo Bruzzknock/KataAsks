@@ -16,9 +16,9 @@ from utils import DATA_DIR, load_local_documents
 
 load_dotenv()
 
-st.set_page_config(page_title="Gemini Knowledge Chat", page_icon=":speech_balloon:")
-st.title("Gemini Knowledge Chat")
-st.caption("Chat with your local documents using a Gemini-powered RAG pipeline.")
+st.set_page_config(page_title="Kata's Knowledge Chat", page_icon=":speech_balloon:")
+st.title("Kata's Knowledge Chat")
+st.caption("Find architecture solutions using Kata's Knowledge Chat RAG pipeline.")
 
 
 @st.cache_resource(show_spinner="Loading models and documents...")

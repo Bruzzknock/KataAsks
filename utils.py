@@ -113,14 +113,23 @@ def _load_pdf_with_fallback(path: Path) -> list[Document]:
     return _load_pdf_with_ocr(path)
 
 
-def load_local_documents(data_dir: str) -> list[Document]:
-    """Recursively load docs from a folder using format-appropriate loaders."""
+def load_local_documents(data_dir: str, skip_filenames: Iterable[str] | None = None) -> list[Document]:
+    """Recursively load docs from a folder using format-appropriate loaders.
+
+    Optionally skip files whose names already exist in the vector store.
+    """
     data_path = Path(data_dir)
+    skip_set = {name.lower() for name in (skip_filenames or []) if name}
     docs: list[Document] = []
 
     for path in data_path.rglob("*"):
         if not path.is_file():
             continue
+
+        if skip_set and path.name.lower() in skip_set:
+            print(f"[info] Skipping already embedded file before load: {path.name}")
+            continue
+
         suffix = path.suffix.lower()
 
         try:

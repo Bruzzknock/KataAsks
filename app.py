@@ -56,8 +56,24 @@ def persist_vector_store(vector_store: Chroma) -> None:
 
 
 def sync_local_documents(vector_store: Chroma) -> dict[str, Any]:
+
+    existing_collection = vector_store.get(include=["metadatas"])
+    existing_filenames = {
+        metadata.get("source_name")
+        for metadata in (existing_collection.get("metadatas", []) if existing_collection else [])
+        if metadata and metadata.get("source_name")
+    }
+
+    if existing_filenames:
+        preview_names = sorted(existing_filenames)
+        if len(preview_names) > 5:
+            preview_display = ", ".join(preview_names[:5]) + ", ..."
+        else:
+            preview_display = ", ".join(preview_names)
+        print(f"[info] Already embedded file names detected: {preview_display}")
+
     try:
-        docs = load_local_documents(str(DATA_DIR))
+        docs = load_local_documents(str(DATA_DIR), skip_filenames=existing_filenames)
     except FileNotFoundError as exc:
         return {"added": 0, "updated": 0, "skipped": 0, "error": str(exc)}
 

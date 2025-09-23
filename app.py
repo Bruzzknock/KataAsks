@@ -370,10 +370,33 @@ def ensure_configuration():
 def render_sources(docs: List[Document]):
     for idx, doc in enumerate(docs, start=1):
         metadata = doc.metadata or {}
-        source = metadata.get("source") or metadata.get("file_path") or f"Document {idx}"
-        text = doc.page_content.strip()
-        snippet = text[:500] + ("..." if len(text) > 500 else "")
-        st.markdown(f"**{source}**\n\n> {snippet}")
+        raw_source = metadata.get("source") or metadata.get("file_path")
+        if raw_source:
+            display_name = format_source_label(raw_source)
+        else:
+            display_name = f"Document {idx}"
+
+        page_display: str | None = None
+        page_label = metadata.get("page_label")
+        if isinstance(page_label, str):
+            page_label = page_label.strip() or None
+        if page_label:
+            page_display = page_label
+        else:
+            page_value = metadata.get("page")
+            if isinstance(page_value, (int, float)):
+                page_display = str(int(page_value) + 1)
+            elif isinstance(page_value, str) and page_value.strip():
+                page_display = page_value.strip()
+
+        if page_display:
+            header = f"{display_name} (page {page_display})"
+        else:
+            header = display_name
+
+        text = (doc.page_content or "").strip()
+        snippet = text[:500] + ("..." if len(text) > 500 else "") if text else "[No preview available]"
+        st.markdown(f"**{header}**\n\n> {snippet}")
 
 
 google_api_key, embedding_api_key, ready = ensure_configuration()
@@ -433,3 +456,4 @@ if prompt := st.chat_input("Ask a question about your documents"):
             st.session_state.messages.append(
                 {"role": "assistant", "content": answer, "sources": sources}
             )
+

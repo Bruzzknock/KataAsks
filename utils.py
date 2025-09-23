@@ -143,6 +143,14 @@ def load_local_documents(data_dir: str) -> list[Document]:
                 metadata["source"] = source_path
                 metadata["source_name"] = path.name
                 metadata["source_mtime"] = stat.st_mtime
+
+                if "page_label" not in metadata:
+                    page_value = metadata.get("page")
+                    if isinstance(page_value, (int, float)):
+                        metadata["page_label"] = str(int(page_value) + 1)
+                    elif isinstance(page_value, str) and page_value.strip():
+                        metadata["page_label"] = page_value.strip()
+
                 doc.metadata = metadata
             docs.extend(loaded_docs)
         except Exception as e:

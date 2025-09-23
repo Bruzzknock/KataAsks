@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import os
 from datetime import datetime
 from pathlib import Path
@@ -46,7 +46,7 @@ def generate_chunk_id(source: str, mtime: float | None, index: int) -> str:
 def persist_vector_store(vector_store: Chroma) -> None:
     """Flush vector store state when persistence is available."""
     if hasattr(vector_store, "persist"):
-        persist_vector_store(vector_store)
+        vector_store.persist()
         return
     client = getattr(vector_store, "_client", None)
     if client and hasattr(client, "persist"):
@@ -64,8 +64,44 @@ def sync_local_documents(vector_store: Chroma) -> dict[str, Any]:
     if not docs:
         return {"added": 0, "updated": 0, "skipped": 0}
 
+    source_names: dict[str, str] = {}
+    source_has_text: dict[str, bool] = {}
+    filtered_docs: List[Document] = []
+
+    for doc in docs:
+        metadata = doc.metadata or {}
+        source = metadata.get("source")
+        if source:
+            source_names.setdefault(
+                source, metadata.get("source_name") or Path(source).name
+            )
+
+        text = (doc.page_content or "").strip()
+
+        if text:
+            filtered_docs.append(doc)
+            if source:
+                source_has_text[source] = True
+        elif source:
+            source_has_text.setdefault(source, False)
+
+    empty_sources = [
+        source_names[src]
+        for src, has_text in source_has_text.items()
+        if not has_text
+    ]
+
+    if not filtered_docs:
+        return {
+            "added": 0,
+            "updated": 0,
+            "skipped": 0,
+            "empty": len(empty_sources),
+            "empty_sources": empty_sources,
+        }
+
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    splits = splitter.split_documents(docs)
+    splits = splitter.split_documents(filtered_docs)
     grouped: dict[str, dict[str, Any]] = {}
     for chunk in splits:
         source = chunk.metadata.get("source")
@@ -124,7 +160,13 @@ def sync_local_documents(vector_store: Chroma) -> dict[str, Any]:
     if modified:
         persist_vector_store(vector_store)
 
-    return {"added": added, "updated": updated, "skipped": skipped}
+    return {
+        "added": added,
+        "updated": updated,
+        "skipped": skipped,
+        "empty": len(empty_sources),
+        "empty_sources": empty_sources,
+    }
 
 
 def get_persisted_documents(vector_store: Chroma) -> List[dict[str, Any]]:
@@ -183,6 +225,8 @@ def render_document_panel(vector_store: Chroma) -> None:
         text = message.get("text", "")
         if level == "success":
             st.sidebar.success(text)
+        elif level == "warning":
+            st.sidebar.warning(text)
         elif level == "error":
             st.sidebar.error(text)
         else:
@@ -198,10 +242,24 @@ def render_document_panel(vector_store: Chroma) -> None:
         else:
             added = summary.get("added", 0)
             updated = summary.get("updated", 0)
+            empty = summary.get("empty", 0)
+            empty_sources = summary.get("empty_sources", [])
+            empty_preview = ", ".join(empty_sources[:3])
+            if len(empty_sources) > 3:
+                empty_preview += ", ..."
+            detail_suffix = f" ({empty_preview})" if empty_preview else ""
             if added or updated:
+                text = f"Indexed {added + updated} document(s): {added} new, {updated} updated."
+                if empty:
+                    text += f" Skipped {empty} file(s) with no extractable text{detail_suffix}."
                 st.session_state["doc_action_message"] = {
                     "level": "success",
-                    "text": f"Indexed {added + updated} document(s): {added} new, {updated} updated.",
+                    "text": text,
+                }
+            elif empty:
+                st.session_state["doc_action_message"] = {
+                    "level": "warning",
+                    "text": f"No extractable text found in {empty} file(s){detail_suffix}. Nothing was indexed.",
                 }
             else:
                 st.session_state["doc_action_message"] = {

@@ -325,12 +325,14 @@ def build_graph(google_api_key: str, embedding_api_key: str):
     prompt = hub.pull("rlm/rag-prompt")
 
     class State(TypedDict):
+        retrieval_query: str
         question: str
         context: List[Document]
         answer: str
 
     def retrieve(state: State):
-        retrieved_docs = vector_store.similarity_search(state["question"])
+        keywords = state["retrieval_query"].strip() or state["question"]
+        retrieved_docs = vector_store.similarity_search(keywords)
         return {"context": retrieved_docs}
 
     def generate(state: State):
@@ -401,6 +403,8 @@ def render_sources(docs: List[Document]):
 
 google_api_key, embedding_api_key, ready = ensure_configuration()
 
+if "retrieval_keywords" not in st.session_state:
+    st.session_state.retrieval_keywords = ""
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -425,6 +429,12 @@ for message in st.session_state.messages:
             with st.expander("Sources", expanded=False):
                 render_sources(message["sources"])
 
+st.text_input(
+    "Optional keywords for vector search",
+    key="retrieval_keywords",
+    placeholder="e.g. refund policy, cancellation",
+)
+st.caption("Leave keywords blank to search with your full question.")
 if prompt := st.chat_input("Ask a question about your documents"):
     if not ready:
         st.warning("Provide both API keys in the sidebar to start chatting.")
@@ -435,13 +445,14 @@ if prompt := st.chat_input("Ask a question about your documents"):
             st.error("The chat pipeline is not ready yet.")
     else:
         st.session_state.messages.append({"role": "user", "content": prompt})
+        retrieval_keywords = (st.session_state.get("retrieval_keywords") or "").strip()
         with st.chat_message("user"):
             st.markdown(prompt)
 
         try:
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
-                    result = graph.invoke({"question": prompt})
+                    result = graph.invoke({"retrieval_query": retrieval_keywords, "question": prompt})
                 answer = result["answer"]
                 st.markdown(answer)
                 sources = result.get("context", [])

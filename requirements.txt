@@ -132,3 +132,6 @@ zstandard==0.25.0
 streamlit==1.49.1
 
 
+Pillow==10.4.0
+pypdfium2==4.30.0
+pytesseract==0.3.13
